@@ -15,9 +15,12 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     
     var audioRecorder : AVAudioRecorder!
     var filepath: URL!
+    var timer : Timer!
     var isAudioRecordingGranted : Bool?
     let session = AVAudioSession.sharedInstance()
     
+    
+    @IBOutlet weak var showTimeLabel: UILabel!
     @IBOutlet weak var statusLabel: UILabel!
     @IBOutlet weak var stopRecordButton: UIButton!
     @IBOutlet weak var recordButton: UIButton!
@@ -29,7 +32,6 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
         askPermission()
         congifureUI(.notRecording)
     }
-    
     
     //MARK: Ask user a permission to record an audio
     private func askPermission() {
@@ -84,6 +86,7 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
             statusLabel.text = "Tap to start recording"
             recordButton.isEnabled = true
             stopRecordButton.isEnabled = false
+            showTimeLabel.text = ""
         }
     
     }
@@ -111,11 +114,21 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
         audioRecorder.isMeteringEnabled = true
         audioRecorder.prepareToRecord()
         audioRecorder.record()
+        timer = Timer.scheduledTimer(timeInterval: 0.1, target: self,  selector: #selector(self.updateAudioMeter(timer:)), userInfo:nil, repeats:true)
+    }
+    
+    @objc private func updateAudioMeter(timer: Timer) {
+        let min = Int(audioRecorder.currentTime / 60)
+        let sec = Int(audioRecorder.currentTime.truncatingRemainder(dividingBy: 60))
+        let totalTimeString = String(format: "%02d:%02d", min, sec)
+        showTimeLabel.text = totalTimeString
+        audioRecorder.updateMeters()
     }
     
     // MARK: Stop recording an audio
     private func stopRecorder() {
         audioRecorder.stop()
+        timer.invalidate()
         try! session.setActive(false)
     }
     
