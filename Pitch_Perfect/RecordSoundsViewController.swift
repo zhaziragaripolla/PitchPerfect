@@ -10,11 +10,10 @@
 import UIKit
 import AVFoundation
 
-class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
+class RecordSoundsViewController: UIViewController {
 
-    var audioRecorder : AVAudioRecorder!
-    var filepath: URL!
-    var timer : Timer!
+    var audioRecorder : AVAudioRecorder?
+    var timer : Timer?
     var isAudioRecordingGranted : Bool?
     let session = AVAudioSession.sharedInstance()
     
@@ -22,8 +21,6 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     @IBOutlet weak var statusLabel: UILabel!
     @IBOutlet weak var stopRecordButton: UIButton!
     @IBOutlet weak var recordButton: UIButton!
-    
-    enum RecordingState { case recording, notRecording }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -52,7 +49,6 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
             
         default:
             break
-            
         }
     }
     
@@ -80,19 +76,29 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
         showTimeLabel.text = ""
     }
     
-    // Mark: Prepare for recording an audio
-    private func setRecorder() {
+    //MARK: Getting path URL
+    private func getURL()-> URL? {
         let dirpath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true) [0] as String
         let recordingName = "recordedVoice.wav"
         let pathArray = [dirpath, recordingName]
-        filepath = URL(string: pathArray.joined(separator: "/"))
-        print(filepath!.description)
+        guard let filepath = URL(string: pathArray.joined(separator: "/")) else {
+            return nil
+        }
+        return filepath
+    }
+    
+    // MARK: Prepare for recording an audio
+    private func setRecorder() {
+        guard let url = getURL() else {
+            print("URL is nil")
+            return
+        }
+        
         do {
             try session.setCategory(.playAndRecord, mode: .default)
             try session.setActive(true)
-            audioRecorder = try AVAudioRecorder(url: filepath, settings: [:])
-            audioRecorder.delegate = self
-            
+            audioRecorder = try AVAudioRecorder(url: url, settings: [:])
+            audioRecorder?.delegate = self
         } catch {
             print ("Setting category to AVAudioSession is failed")
         }
@@ -100,6 +106,10 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     
     // MARK: Start recording an audio
     private func startRecorder() {
+        guard let audioRecorder = audioRecorder else {
+            print("AVAudioRecorder instance is nil")
+            return
+        }
         audioRecorder.isMeteringEnabled = true
         audioRecorder.prepareToRecord()
         audioRecorder.record()
@@ -107,34 +117,48 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     }
     
     @objc private func updateAudioMeter(timer: Timer) {
-        let min = Int(audioRecorder.currentTime / 60)
-        let sec = Int(audioRecorder.currentTime.truncatingRemainder(dividingBy: 60))
+        let min = Int(audioRecorder!.currentTime / 60)
+        let sec = Int(audioRecorder!.currentTime.truncatingRemainder(dividingBy: 60))
         showTimeLabel.text = String(format: "%02d:%02d", min, sec)
-        audioRecorder.updateMeters()
+        audioRecorder!.updateMeters()
     }
     
     // MARK: Stop recording an audio
     private func stopRecorder() {
-        audioRecorder.stop()
-        timer.invalidate()
-        try! session.setActive(false)
+        audioRecorder?.stop()
+        timer?.invalidate()
+        do {
+            try session.setActive(false)
+        } catch {
+            print("Unable to activate Audio session")
+        }
     }
     
     // MARK: Going to PlaySoundsViewController
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if segue.identifier == "stopRecording" {
+        guard let identifier = segue.identifier else {
+            print("Segue has no identifier")
+            return
+        }
+        
+        if identifier == "stopRecording" {
             let playSoundsVC = segue.destination as? PlaySoundsViewController
             let recordedAudioURL = sender as! URL
             playSoundsVC?.recordedAudioURL = recordedAudioURL
+        } else {
+            print("Did not recognize storyboard identifier")
         }
     }
-    
+
+}
+
+extension RecordSoundsViewController: AVAudioRecorderDelegate {
     func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
         guard flag else {
-            print("recording was not successfull")
+            print("Recording was not successfull")
             return
         }
-        performSegue(withIdentifier: "stopRecording", sender: audioRecorder.url)
+        performSegue(withIdentifier: "stopRecording", sender: audioRecorder?.url)
     }
 }
 
