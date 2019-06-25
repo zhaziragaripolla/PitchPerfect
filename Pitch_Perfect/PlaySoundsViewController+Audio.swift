@@ -90,7 +90,7 @@ extension PlaySoundsViewController: AVAudioPlayerDelegate {
             var delayInSeconds: Double = 0
             
             if let lastRenderTime = self.audioPlayerNode.lastRenderTime, let playerTime = self.audioPlayerNode.playerTime(forNodeTime: lastRenderTime) {
-                
+        
                 if let rate = rate {
                     delayInSeconds = Double(self.audioFile.length - playerTime.sampleTime) / Double(self.audioFile.processingFormat.sampleRate) / Double(rate)
                 } else {

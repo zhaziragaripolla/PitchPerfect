@@ -12,13 +12,11 @@ import AVFoundation
 
 class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
 
-    
     var audioRecorder : AVAudioRecorder!
     var filepath: URL!
     var timer : Timer!
     var isAudioRecordingGranted : Bool?
     let session = AVAudioSession.sharedInstance()
-    
     
     @IBOutlet weak var showTimeLabel: UILabel!
     @IBOutlet weak var statusLabel: UILabel!
@@ -30,7 +28,7 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         askPermission()
-        congifureUI(.notRecording)
+        configureUI(false)
     }
     
     //MARK: Ask user a permission to record an audio
@@ -59,36 +57,27 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     }
     
     //MARK: RecordButton is pressed
-    
     @IBAction func touchStartRecording(_ sender: Any) {
-        guard isAudioRecordingGranted! else {
+        guard isAudioRecordingGranted != nil else {
             return
         }
         setRecorder()
-        congifureUI(.recording)
+        configureUI(true)
         startRecorder()
     }
     
     //MARK: StopButton is pressed
     @IBAction func touchStopRecording(_ sender: Any) {
         stopRecorder()
-        congifureUI(.notRecording)
+        configureUI(false)
     }
     
     //MARK: Setting of appropriate UI
-    private func congifureUI(_ recordingState : RecordingState ) {
-        switch(recordingState) {
-        case .recording:
-            recordButton.isEnabled = false
-            stopRecordButton.isEnabled = true
-            statusLabel.text = "Recording in progress..."
-        case .notRecording:
-            statusLabel.text = "Tap to start recording"
-            recordButton.isEnabled = true
-            stopRecordButton.isEnabled = false
-            showTimeLabel.text = ""
-        }
-    
+    private func configureUI(_ isRecording : Bool = false ) {
+        statusLabel.text = isRecording ? "Recording in progress..." : "Tap to record"
+        recordButton.isEnabled = !isRecording
+        stopRecordButton.isEnabled = isRecording
+        showTimeLabel.text = ""
     }
     
     // Mark: Prepare for recording an audio
@@ -120,8 +109,7 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     @objc private func updateAudioMeter(timer: Timer) {
         let min = Int(audioRecorder.currentTime / 60)
         let sec = Int(audioRecorder.currentTime.truncatingRemainder(dividingBy: 60))
-        let totalTimeString = String(format: "%02d:%02d", min, sec)
-        showTimeLabel.text = totalTimeString
+        showTimeLabel.text = String(format: "%02d:%02d", min, sec)
         audioRecorder.updateMeters()
     }
     
@@ -142,15 +130,12 @@ class RecordSoundsViewController: UIViewController, AVAudioRecorderDelegate {
     }
     
     func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
-        if flag {
-            performSegue(withIdentifier: "stopRecording", sender: audioRecorder.url)
-        } else {
+        guard flag else {
             print("recording was not successfull")
+            return
         }
-        
+        performSegue(withIdentifier: "stopRecording", sender: audioRecorder.url)
     }
-    
-    
 }
 
 
